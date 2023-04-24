@@ -5,6 +5,7 @@ import org.bson.BsonWriter
 import org.bson.codecs.Codec
 import org.bson.codecs.DecoderContext
 import org.bson.codecs.EncoderContext
+import org.bson.types.ObjectId
 
 class PlaceDataCodec: Codec<PlaceData> {
     override fun encode(writer: BsonWriter?, value: PlaceData?, encoderContext: EncoderContext?) {
@@ -26,25 +27,33 @@ class PlaceDataCodec: Codec<PlaceData> {
         return PlaceData::class.java
     }
 
-    override fun decode(reader: BsonReader?, decoderContext: DecoderContext?): PlaceData {
+    override fun decode(reader: BsonReader?, decoderContext: DecoderContext?): PlaceData? {
         reader?.apply {
             readStartDocument()
-            val id = readObjectId("_id")
-            val name = readString("name")
-            val latitude = readDouble("latitude")
-            val longitude = readDouble("longitude")
-            val ownerId = readString("ownerId")
-            val description =if (readBsonType() == BsonType.STRING) {
-                readString("description")
-            } else {
-                null
+            var id: ObjectId? = null
+            var name = ""
+            var latitude = 0.0
+            var longitude = 0.0
+            var ownerId = ""
+            var description: String? = null
+            var image: ByteArray? = null
+
+            while(readBsonType() != BsonType.END_OF_DOCUMENT){
+                when(readName()){
+                    "_id" -> id = readObjectId()
+                    "name" -> name = readString()
+                    "latitude" -> latitude = readDouble()
+                    "longitude" -> longitude = readDouble()
+                    "ownerId" -> ownerId = readString()
+                    "description" -> description = if (currentBsonType == BsonType.STRING) readString() else{skipValue(); null }
+                    "image" -> image = if (currentBsonType == BsonType.BINARY) readBinaryData().data else {skipValue(); null }
+                }
             }
-            val image = readBinaryData("image")?.data
             readEndDocument()
 
             return PlaceData(_id=id, name=name, latitude=latitude, longitude=longitude, ownerId=ownerId, description=description, image=image)
         }
-        return PlaceData()
+        return null
     }
 
 }
